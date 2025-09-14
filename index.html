@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RocketTyping</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --text: #f5f5f5;
+      --accent: #1f2230;
+    }
+    body.light {
+      --bg: #ffffff;
+      --text: #222;
+      --accent: #e0e0e0;
+    }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      transition: background 0.3s, color 0.3s;
+    }
+    .header, .footer, .mode-selector, .stats-panel {
+      margin: 10px 0;
+    }
+    .logo { width: 40px; height: 40px; }
+    .paragraph-box span { margin-right: 5px; }
+    .highlight { background: yellow; color: black; }
+    .hidden { visibility: hidden; }
+    .typing-container { max-width: 800px; width: 100%; }
+    #typing-input { width: 100%; padding: 15px; font-size: 1.1rem; background: var(--accent); color: var(--text); border: none; border-radius: 5px; }
+    button { margin: 5px; padding: 10px 20px; background: var(--accent); color: var(--text); border: none; border-radius: 5px; cursor: pointer; }
+    .keyboard { display: flex; flex-wrap: wrap; max-width: 600px; margin-top: 20px; }
+    .key { width: 40px; height: 40px; margin: 2px; background: var(--accent); display: flex; align-items: center; justify-content: center; border-radius: 4px; }
+    .key.active { background: limegreen; color: black; }
+    .hidden-ui .stats-panel, .hidden-ui .mode-selector { display: none; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <img src="logo.png" alt="RocketTyping Logo" class="logo" />
+    <h1>RocketTyping</h1>
+    <button onclick="toggleTheme()">🌙</button>
+    <button onclick="toggleDistraction()">🧘</button>
+  </header>
+
+  <div class="mode-selector">
+    <button onclick="setMode(15)">15s</button>
+    <button onclick="setMode(30)">30s</button>
+    <button onclick="setMode(60)">60s</button>
+    <button onclick="toggleBlind()">🧩 Blind</button>
+    <button onclick="toggleReverse()">🔁 Reverse</button>
+  </div>
+
+  <div class="typing-container">
+    <div id="paragraph-display" class="paragraph-box"></div>
+    <input type="text" id="typing-input" placeholder="Start typing here..." autocomplete="off" />
+  </div>
+
+  <div class="stats-panel">
+    <div>⏱ Time: <span id="timer">0</span>s</div>
+    <div>🚀 WPM: <span id="wpm">0</span></div>
+    <div>🎯 Accuracy: <span id="accuracy">100%</span></div>
+  </div>
+
+  <div class="keyboard" id="virtual-keyboard"></div>
+
+  <footer class="footer">
+    <p>Made with ❤ by Akash</p>
+  </footer>
+
+  <script>
+    const paragraphs = {
+      en: ["Typing improves with practice. Speed and accuracy come with time.", "RocketTyping is fun, fast, and multilingual."],
+      ta: ["நீங்கள் தொடர்ந்து பயிற்சி செய்தால் தட்டச்சு திறன் மேம்படும்.", "இது ஒரு வேகமான மற்றும் பயனுள்ள தட்டச்சு பயிற்சி."],
+      si: ["ටයිප් කිරීම පුහුණු කිරීමෙන් වැඩි වේ.", "RocketTyping වේගවත් සහ බහු භාෂා සහිතයි."],
+      es: ["La práctica mejora la velocidad de escritura.", "RocketTyping es rápido y divertido."]
+    };
+
+    let mode = 30, timer = 0, interval, currentLang = 'en', currentWord = 0, blind = false, reverse = false;
+    let typedChars = 0, correctChars = 0;
+
+    const inputBox = document.getElementById("typing-input");
+    const paragraphDisplay = document.getElementById("paragraph-display");
+
+    function setMode(seconds) {
+      mode = seconds;
+      resetTest();
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle("light");
+    }
+
+    function toggleDistraction() {
+      document.body.classList.toggle("hidden-ui");
+    }
+
+    function toggleBlind() {
+      blind = !blind;
+      paragraphDisplay.classList.toggle("hidden", blind);
+    }
+
+    function toggleReverse() {
+      reverse = !reverse;
+      resetTest();
+    }
+
+    function getRandomParagraph() {
+      const list = paragraphs[currentLang];
+      let text = list[Math.floor(Math.random() * list.length)];
+      if (reverse) text = text.split("").reverse().join("");
+      return text;
+    }
+
+    function renderParagraph(text) {
+      paragraphDisplay.innerHTML = "";
+      text.split(" ").forEach((word, i) => {
+        const span = document.createElement("span");
+        span.textContent = word;
+        if (i === 0) span.classList.add("highlight");
+        paragraphDisplay.appendChild(span);
+      });
+    }
+
+    function resetTest() {
+      clearInterval(interval);
+      inputBox.value = "";
+      timer = mode;
+      currentWord = 0;
+      typedChars = 0;
+      correctChars = 0;
+      document.getElementById("timer").textContent = timer;
+      document.getElementById("wpm").textContent = "0";
+      document.getElementById("accuracy").textContent = "100%";
+      renderParagraph(getRandomParagraph());
+      inputBox.disabled = false;
+    }
+
+    function startTimer() {
+      interval = setInterval(() => {
+        timer--;
+        document.getElementById("timer").textContent = timer;
+        if (timer <= 0) {
+          clearInterval(interval);
+          inputBox.disabled = true;
+          setTimeout(resetTest, 2000); // Repeat quote mode
+        }
+      }, 1000);
+    }
+
+    inputBox.addEventListener("input", () => {
+      if (timer === mode) startTimer();
+      const typed = inputBox.value.trim();
+      const words = paragraphDisplay.querySelectorAll("span");
+      words.forEach(span => span.classList.remove("highlight"));
+      if (typed === words[currentWord]?.textContent) {
+        words[currentWord].classList.add("highlight");
+        currentWord++;
+        inputBox.value = "";
+      } else {
+        words[currentWord]?.classList.add("highlight");
+      }
+
+      typedChars += typed.length;
+      correctChars += [...typed].filter((c, i) => c === words[currentWord]?.textContent[i]).length;
+      const accuracy = typedChars ? Math.round((correctChars / typedChars) * 100) : 100;
+      const elapsed = (mode - timer) / 60;
+      const wpm = elapsed > 0 ? Math.round((correctChars / 5) / elapsed) : 0;
+      document.getElementById("accuracy").textContent = ${accuracy}%;
+      document.getElementById("wpm").textContent = wpm;
+    });
+
+    function renderKeyboard() {
+      const keys = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890".split("");
+      const container = document.getElementById("virtual-keyboard");
+      container.innerHTML = "";
+      keys.forEach(k => {
+        const key = document.createElement("div");
+        key.className = "key";
+        key.textContent = k;
+        key.id = key-${k};
+        container.appendChild(key);
+      });
+    }
+
+    document.addEventListener("keydown", e => {
+      const k = document.getElementById(`key-${e [A](https://github.com/Ronnie434/30-days-of-React/tree/22142106cb46f717a1259f84227cc90ed7fe50cc/02_Day_Introduction_to_React%2F02_introduction_to_react.md?copilot_analytics_metadata=eyJldmVudEluZm9fbWVzc2FnZUlkIjoibUFaREtYZ2VLVXBhRTN3Y1I0clhRIiwiZXZlbnRJbmZvX2NvbnZlcnNhdGlvbklkIjoiTkpTS1BIeHU0VHBHNW13S3Myc0FTIiwiZXZlbnRJbmZvX2NsaWNrRGVzdGluYXRpb24iOiJodHRwczpcL1wvZ2l0aHViLmNvbVwvUm9ubmllNDM0XC8zMC1kYXlzLW9mLVJlYWN0XC90cmVlXC8yMjE0MjEwNmNiNDZmNzE3YTEyNTlmODQyMjdjYzkwZWQ3ZmU1MGNjXC8wMl9EYXlfSW50cm9kdWN0aW9uX3RvX1JlYWN0JTJGMDJfaW50cm9kdWN0aW9uX3RvX3JlYWN0Lm1kIiwiZXZlbnRJbmZvX2NsaWNrU291cmNlIjoiY2l0YXRpb25MaW5rIn0%3D&citationMarker=9F742443-6C92-4C44-BF58-8F5A7C53B6F1)
